@@ -3,18 +3,62 @@ Author: Marcus Pertlwieser, 2023
 
 """
 
+import numpy as np
 from torch.utils.data import Dataset
 from pathlib import Path
+from PIL import Image
+from data_utils import to_grayscale, prepare_image, random_det
+
+class RandomImagePixelationDataset(Dataset):
+    """Dataset class for randomly pixelated images. Currently uses indices as random seeds.
+    Some starting indices seem to be off by one, needs investigation."""
+
+    def __init__(self, image_dir: str, width_range: tuple[int, int],
+                height_range: tuple[int, int], size_range: tuple[int, int],
+                dtype = None):
+        
+        if width_range[0] < 2:
+            raise ValueError("Width min value too small!")
+        if height_range[0] < 2:
+            raise ValueError("Height min value too small!")
+        if size_range[0] < 2:
+            raise ValueError("Size min value too small!")
+        
+        if width_range[0] > width_range[1]:
+            raise ValueError("Width min bigger than max!")
+        if height_range[0] > height_range[1]:
+            raise ValueError("Height min bigger than max!")
+        if size_range[0] > size_range[1]:
+            raise ValueError("Size min bigger than max!")
+        
+        self.width_range = width_range
+        self.height_range = height_range
+        self.size_range = size_range
+        self.dtype = dtype
+        
+        self.files = sorted(Path(image_dir).absolute().rglob('*.jpg'))
+    
+    def __getitem__(self, index):
+        img = np.array(Image.open(self.files[index]), dtype = self.dtype)
+        img = to_grayscale(img)
+        
+        x, y, width, height, size = random_det(img, index, self.width_range, self.height_range, self.size_range)
+        
+        pixelated_image, known_array, target_array = prepare_image(img, x, y, width, height, size)
+        return pixelated_image, known_array, target_array, self.files[index]
+    
+    def __len__(self):
+        return len(self.files)
 
 class DepixDataset(Dataset):
     def __init__(self, dir: str) -> None:
         self.dir = dir
 
         # list of absolute paths of files
-        self.files = sorted(Path(dir).absolute().rglob('*.jpg'))
+        self.files = sorted(Path(self.dir).absolute().rglob('*.jpg'))
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self.files)
 
     def __getitem__(self, idx):
         pass

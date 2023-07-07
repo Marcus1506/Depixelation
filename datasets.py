@@ -38,7 +38,7 @@ class RandomImagePixelationDataset(Dataset):
         
         self.files = sorted(Path(image_dir).absolute().rglob('*.jpg'))
     
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
         img = np.array(Image.open(self.files[index]), dtype = self.dtype)
         img = to_grayscale(img)
         
@@ -47,18 +47,21 @@ class RandomImagePixelationDataset(Dataset):
         pixelated_image, known_array, target_array = prepare_image(img, x, y, width, height, size)
         return pixelated_image, known_array, target_array, self.files[index]
     
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.files)
 
 class DepixDataset(Dataset):
-    def __init__(self, dir: str) -> None:
+    def __init__(self, dir: str, dtype=None) -> None:
         self.dir = dir
 
         # list of absolute paths of files
         self.files = sorted(Path(self.dir).absolute().rglob('*.jpg'))
-
+        self.dtype = dtype
+        
     def __len__(self) -> int:
         return len(self.files)
 
-    def __getitem__(self, idx):
-        pass
+    def __getitem__(self, index: int) -> np.ndarray:
+        img = np.array(Image.open(self.files[index]), dtype = self.dtype)
+        img = to_grayscale(img)
+        return img

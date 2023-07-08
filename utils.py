@@ -8,29 +8,34 @@ import numpy as np
 from tqdm import tqdm
 import torch
 from torch.utils.data.dataloader import DataLoader
+from torch.utils.data import random_split
 
-# TODO: Add minibacht size, hand over optimizer and loss instance directly
 def training_loop(
-        network: torch.nn.Module, train_data: torch.utils.data.Dataset,
-        eval_data: torch.utils.data.Dataset, num_epochs: int,
-        show_progress: bool = False, try_cuda: bool = False,
-        early_stopping: bool = True, patience: int = 3) -> tuple[list, list]:
+        network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
+        optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
+        minibatch_size: int=16, show_progress: bool = False, try_cuda: bool = False,
+        early_stopping: bool = True, patience: int = 3) -> tuple[list[float], list[float]]:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
     network.to(device)
 
+    # handle data
+    if int(sum(splits)) != 1:
+        raise ValueError("Splits must sum to 1.")
+    train_data, eval_data = random_split(data, [*tuple])
+
     # Maybe set seed here and use shuffling if needed.
     # Also memory could be pinned on CPU
     # to make training less prone to performance problems coming
     # from potential disk I/O operations.
-    train_dataloader = torch.utils.data.DataLoader(train_data)
-    eval_dataloader = torch.utils.data.DataLoader(eval_data)
+    train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=minibatch_size, shuffle=True)
+    eval_dataloader = torch.utils.data.DataLoader(eval_data, batch_size=minibatch_size, shuffle=True)
 
-    # hand the optimizer model parameters
-    optimizer = torch.optim.Adam(network.parameters())
+    # hand model parameters to optimizer
+    optimizer = optimizer(network.parameters())
     # instantiate loss
-    loss_funtion = torch.nn.MSELoss()
+    loss_function = torch.nn.MSELoss()
 
     training_losses = []
     eval_losses = []
@@ -47,7 +52,7 @@ def training_loop(
 
             # compute loss and propagate back
             pred = network(train_batch)
-            loss = loss_funtion(torch.squeeze(pred, dim=0), target_batch)
+            loss = loss_function(torch.squeeze(pred, dim=0), target_batch)
             loss.backward()
 
             # update model parameters
@@ -65,7 +70,7 @@ def training_loop(
             target_batch = target_batch.to(device)
 
             pred = network(eval_batch)
-            loss = loss_funtion(torch.squeeze(pred, dim=0), target_batch)
+            loss = loss_function(torch.squeeze(pred, dim=0), target_batch)
 
             eval_minibatch_losses.append(loss.detach().cpu())
         eval_losses.append(torch.mean(torch.stack(eval_minibatch_losses)))
@@ -74,7 +79,7 @@ def training_loop(
             # mabye restrict the search to the last few entries
             min_index = eval_losses.index(min(eval_losses))
             if len(eval_losses) - 1 - min_index == patience:
-                # for completeness sake maybe also send network back to cpu here 
+                # for the sake of completeness, maybe also send network back to cpu here 
                 return training_losses, eval_losses
 
     # change device back to cpu

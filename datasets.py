@@ -1,6 +1,7 @@
 """
 Author: Marcus Pertlwieser, 2023
 
+Provides dataset classes for the project.
 """
 
 import numpy as np

@@ -9,6 +9,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import random_split
+import matplotlib.pyplot as plt
 
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
@@ -86,3 +87,13 @@ def training_loop(
     network.to('cpu')
 
     return training_losses, eval_losses
+
+def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
+    pixelated_image, known_array, target_array, path = data_sample
+    fig, axs = plt.subplots(1, 3, figsize=(10, 10))
+    axs[0].imshow(pixelated_image[0], cmap='gray', vmin=0, vmax=255)
+    axs[1].imshow(known_array[0], cmap='gray', vmin=0, vmax=1)
+    axs[2].imshow(target_array[0], cmap='gray', vmin=0, vmax=255)
+    plt.suptitle(path)
+    plt.show()
+    

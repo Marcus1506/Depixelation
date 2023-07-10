@@ -189,6 +189,12 @@ def visualize_flat_u8int(image: np.ndarray, ax) -> None:
         raise ValueError("Image must be square.")
     ax.imshow(img, cmap='gray', vmin=0, vmax=255)
 
+def kernel_interp(range: tuple[int, int], num:int, hidden_layers:int) -> int:
+    """
+    Takes in num and interpolates a fitting integer into the range based on step num.
+    """
+    return int(range[0] + (range[1] - range[0]) * (num / (hidden_layers + 1)))
+
 if __name__ == '__main__':
     # Test set prediction and serialization:
     # test_loop_serialized("models/SimpleCNN_Sandbox.pt", "submission/test_set.pkl")

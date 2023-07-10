@@ -5,10 +5,11 @@ Model Architectures for the project.
 """
 
 import torch
+from utils import kernel_interp
 
 class SimpleCNN(torch.nn.Module):
     def __init__(
-            self, input_channels: int, output_channels: int, num_hidden_layers: int, kernel_size: int=3,
+            self, input_channels: int, output_channels: int, num_hidden_layers: int, kernel_size: tuple[int, int]=(3,3),
             use_batchnorm: bool=True, padding: int='same', stride: int=1, dilation: int=1,
             activation_function: torch.nn.Module=torch.nn.ReLU) -> None:
         super().__init__()
@@ -16,7 +17,7 @@ class SimpleCNN(torch.nn.Module):
         # Input layer
         self.input_channels = input_channels
         self.input_layer = torch.nn.Conv2d(in_channels=input_channels, out_channels=input_channels,
-            kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation)
+            kernel_size=kernel_size[0], padding=padding, stride=stride, dilation=dilation)
         self.use_batchnorm = use_batchnorm
         if self.use_batchnorm:
             self.normalization = torch.nn.BatchNorm2d(input_channels)
@@ -27,14 +28,15 @@ class SimpleCNN(torch.nn.Module):
         for _ in range(num_hidden_layers):
             hidden_layers.append(
                 torch.nn.Conv2d(in_channels=input_channels, out_channels=input_channels,
-                kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation))
+                kernel_size=kernel_interp(kernel_size, _, num_hidden_layers),
+                padding=padding, stride=stride, dilation=dilation))
             if use_batchnorm:
                 hidden_layers.append(torch.nn.BatchNorm2d(input_channels))
             hidden_layers.append(activation_function())
         self.hidden_layers = torch.nn.Sequential(*hidden_layers)
         
         # Output layer
-        self.output_layer = torch.nn.Conv2d(in_channels=input_channels, out_channels=output_channels,kernel_size=kernel_size,
+        self.output_layer = torch.nn.Conv2d(in_channels=input_channels, out_channels=output_channels, kernel_size=kernel_size[1],
                                             padding=padding, stride=stride, dilation=dilation)
         self.output_activation = activation_function()
 

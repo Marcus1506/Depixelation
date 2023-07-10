@@ -54,7 +54,8 @@ class SimpleCNN(torch.nn.Module):
 if __name__ == '__main__':
     model = SimpleCNN(2, 1, 5, 3)
     
-    # (batch_size, channels, height, width)
+    # (batch_size, input_channels, height, width)
     data = torch.rand((1, 2, 32, 32))
 
+    # (batch_size, output_channels, height*width)
     print(model(data).shape)

@@ -112,6 +112,7 @@ def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]
     Should stack pixelated images and known arrays into first batch and targets.
     The returned tensors should be of shape (batch_size, 2, H, W) and (batch_size, 1, H, W),
     with dtype torch.float32.
+    Output should be of shape (batch_size, 2, H, W), (batch_size, 1, H*W)
     """
     try:
         stacked_pix_imgs = np.array([entry[0] for entry in batch_as_list], dtype=np.float32)
@@ -119,12 +120,11 @@ def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]
 
         stacked_input = torch.from_numpy(np.concatenate((stacked_pix_imgs, stacked_known_arrays), axis=1))
 
-        target_arrays = torch.from_numpy(np.array([entry[2] for entry in batch_as_list]))
+        target_arrays = torch.flatten(torch.from_numpy(np.array([entry[2] for entry in batch_as_list], dtype=np.float32)), start_dim=-2)
         return stacked_input, target_arrays
     except ValueError:
         # TODO: Change this implementation to be more performant, use numpy arrays directly
         # Most of the data will be same dimensions anyway so it should be fine
-        # Output should be of shape (batch_size, 2, H, W) and (batch_size, 1, H*W)
         pix_imgs = [entry[0] for entry in batch_as_list]
         known_arrays = [entry[1] for entry in batch_as_list]
         target_arrays = [entry[2] for entry in batch_as_list]

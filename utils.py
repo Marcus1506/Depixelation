@@ -10,7 +10,11 @@ import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import random_split
 import matplotlib.pyplot as plt
+import pickle
 
+from architectures import SimpleCNN
+from submission.submission_serialization import serialize, deserialize
+# TODO: Add number of workers for dataloaders
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
@@ -87,7 +91,7 @@ def training_loop(
                 # for the sake of completeness, maybe also send network back to cpu here
                 network.to('cpu')
                 if model_path and isinstance(model_path, str):
-                    torch.save(network.state_dict(), model_path)
+                    torch.save(network, model_path)
 
                 if losses_path and isinstance(losses_path, str):
                     plot_losses(training_losses, eval_losses, losses_path)
@@ -96,11 +100,36 @@ def training_loop(
     # change device back to cpu
     network.to('cpu')
     if model_path and isinstance(model_path, str):
-        torch.save(network.state_dict(), model_path)
+        torch.save(network, model_path)
 
     if losses_path and isinstance(losses_path, str):
         plot_losses(training_losses, eval_losses, losses_path)
     return
+
+def test_loop_serialized(model_path: str, data_path: str) -> None:
+    """
+    This function is used to test the specified model (model_path) on the provided
+    pickle file, which serves as a test set. The predictions should be gathered in a
+    list of 1D Numpy arrays with dtype uint8 (so rescaling necessary!). This list
+    should then be serialized to file using the provided submission_serialization.py.
+    """
+    
+    model = torch.load(model_path)
+    model.eval()
+    predictions = []
+
+    with open(data_path, 'rb') as f:
+        dictionary = pickle.load(f)
+        with torch.no_grad():
+            for (pixelated_image, known_array) in zip(dictionary['pixelated_images'], dictionary['known_arrays']):
+                input = np.concatenate((pixelated_image, known_array), axis=0)
+                input = torch.from_numpy(input).unsqueeze(0).float()
+                pred = model(input).numpy()*255
+                pred = pred.astype(np.uint8)
+                visualize_flat_u8int(pred)
+                break
+
+        
 
 def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
     """
@@ -125,3 +154,20 @@ def plot_losses(training_losses: list[float], eval_losses: list[float], path: st
     plt.xlabel('Epoch')
     plt.legend()
     plt.savefig(path)
+
+def visualize_flat_u8int(image: np.ndarray) -> None:
+    """
+    Takes in a 1D Numpy array of type uint8 and visualizes it as a grayscale image.
+    """
+    print(image.shape)
+    dim = image.shape[-1]
+    sqrt_dim = int(np.sqrt(dim))
+    try:
+        img = image.copy().reshape((int(sqrt_dim), int(sqrt_dim)))
+    except:
+        raise ValueError("Image must be square.")
+    plt.imshow(img, cmap='gray', vmin=0, vmax=255)
+    plt.show()
+
+if __name__ == '__main__':
+    test_loop_serialized("models/SimpleCNN_Sandbox.pt", "submission/test_set.pkl")

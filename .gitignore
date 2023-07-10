@@ -2,6 +2,7 @@
 dataset/
 data_sandbox/
 *.data
+submission/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

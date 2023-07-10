@@ -49,7 +49,8 @@ class RandomImagePixelationDataset(Dataset):
             transforms.CenterCrop(size=(64, 64))])
     
     def __getitem__(self, index: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
-        img = np.array(Image.open(self.files[index]), dtype = self.dtype)
+        img = self.std_transforms(Image.open(self.files[index]))
+        img = np.array(img, dtype = self.dtype)
         img = to_grayscale(img)
 
         x, y, width, height, size = random_det(img, index, self.width_range, self.height_range, self.size_range)

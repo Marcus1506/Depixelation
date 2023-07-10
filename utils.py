@@ -13,13 +13,14 @@ import matplotlib.pyplot as plt
 import pickle
 
 from submission.submission_serialization import serialize, deserialize
-# TODO: Add number of workers for dataloaders, add true random seed
+# TODO: Add number of workers for dataloaders, add true random seed, improve early stopping by saving best model
+# Consider pinning memory to CPU for dataloaders, try non_blocking=True with removing syncs in epoch loop
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
         minibatch_size: int=16, collate_func: callable=None, show_progress: bool = False, try_cuda: bool = False,
         early_stopping: bool = True, patience: int = 3, seed: int=None, model_path: str=None,
-        losses_path: str=None, workers: int=2) -> None:
+        losses_path: str=None, workers: int=0, pin_memory: bool=True, prefetch_factor: int=2) -> None:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
@@ -40,9 +41,9 @@ def training_loop(
     # to make training less prone to performance problems coming
     # from potential disk I/O operations.
     train_dataloader = DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size,
-                                                   shuffle=True, num_workers=workers)
+                                  shuffle=True, num_workers=workers, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
     eval_dataloader = DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size,
-                                                  shuffle=True, num_workers=workers)
+                                  shuffle=True, num_workers=workers, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
@@ -148,7 +149,7 @@ def check_overfitting(data: torch.utils.data.Dataset, model_path: str) -> None:
     Takes in dataset and model path to check if an overfitted model has
     plausible predictions on the training set.
     """
-    model = torch.load("models/SimpleCNN_Sandbox.pt")
+    model = torch.load(model_path)
     model.eval()
     with torch.no_grad():
         for i in range(4):

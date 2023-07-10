@@ -60,6 +60,12 @@ class RandomImagePixelationDataset(Dataset):
     
     def __len__(self) -> int:
         return len(self.files)
+    
+    def get_image(self, index: int) -> np.ndarray:
+        img = self.std_transforms(Image.open(self.files[index]))
+        img = np.array(img, dtype = self.dtype)
+        img = to_grayscale(img)
+        return img
 
 class DepixDataset(Dataset):
     def __init__(self, dir: str, dtype=None) -> None:

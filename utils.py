@@ -12,15 +12,14 @@ from torch.utils.data import random_split
 import matplotlib.pyplot as plt
 import pickle
 
-from architectures import SimpleCNN
 from submission.submission_serialization import serialize, deserialize
-# TODO: Add number of workers for dataloaders
+# TODO: Add number of workers for dataloaders, add true random seed
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
         minibatch_size: int=16, collate_func: callable=None, show_progress: bool = False, try_cuda: bool = False,
         early_stopping: bool = True, patience: int = 3, seed: int=None, model_path: str=None,
-        losses_path: str=None) -> None:
+        losses_path: str=None, workers: int=2) -> None:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
@@ -40,8 +39,10 @@ def training_loop(
     # Also memory could be pinned on CPU
     # to make training less prone to performance problems coming
     # from potential disk I/O operations.
-    train_dataloader = torch.utils.data.DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size, shuffle=True)
-    eval_dataloader = torch.utils.data.DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size, shuffle=True)
+    train_dataloader = DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size,
+                                                   shuffle=True, num_workers=workers)
+    eval_dataloader = DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size,
+                                                  shuffle=True, num_workers=workers)
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
@@ -129,8 +130,6 @@ def test_loop_serialized(model_path: str, data_path: str) -> None:
                 visualize_flat_u8int(pred)
                 break
 
-        
-
 def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
     """
     Used for plotting samples obatained directly from the random pixelation dataset's
@@ -144,6 +143,27 @@ def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> 
     plt.suptitle(path)
     plt.show()
 
+def check_overfitting(data: torch.utils.data.Dataset, model_path: str) -> None:
+    """
+    Takes in dataset and model path to check if an overfitted model has
+    plausible predictions on the training set.
+    """
+    model = torch.load("models/SimpleCNN_Sandbox.pt")
+    model.eval()
+    with torch.no_grad():
+        for i in range(4):
+            truth = data.get_image(i)
+            pix = data[i][0]
+            
+            pred = model(torch.from_numpy(np.concatenate((data[i][0], data[i][1]), axis=0)).unsqueeze(0).float()).numpy()*255
+            pred = pred.astype(np.uint8)
+
+            fig, axs = plt.subplots(1, 3, figsize=(12, 6))
+            axs[0].imshow(truth[0], cmap='gray', vmin=0, vmax=1)
+            axs[1].imshow(pix[0], cmap='gray', vmin=0, vmax=1)
+            visualize_flat_u8int(pred, axs[2])
+            plt.show()
+
 def plot_losses(training_losses: list[float], eval_losses: list[float], path: str) -> None:
     """
     Takes in training losses and evaluation losses and saves plots to path-directory.
@@ -155,19 +175,20 @@ def plot_losses(training_losses: list[float], eval_losses: list[float], path: st
     plt.legend()
     plt.savefig(path)
 
-def visualize_flat_u8int(image: np.ndarray) -> None:
+def visualize_flat_u8int(image: np.ndarray, ax) -> None:
     """
-    Takes in a 1D Numpy array of type uint8 and visualizes it as a grayscale image.
+    Takes in a 1D Numpy array of type uint8 and visualizes it as a grayscale image
+    on a matplotlib subplot axis.
     """
-    print(image.shape)
     dim = image.shape[-1]
     sqrt_dim = int(np.sqrt(dim))
     try:
         img = image.copy().reshape((int(sqrt_dim), int(sqrt_dim)))
     except:
         raise ValueError("Image must be square.")
-    plt.imshow(img, cmap='gray', vmin=0, vmax=255)
-    plt.show()
+    ax.imshow(img, cmap='gray', vmin=0, vmax=255)
 
 if __name__ == '__main__':
-    test_loop_serialized("models/SimpleCNN_Sandbox.pt", "submission/test_set.pkl")
+    # Test set prediction and serialization:
+    # test_loop_serialized("models/SimpleCNN_Sandbox.pt", "submission/test_set.pkl")
+    pass

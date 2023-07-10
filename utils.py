@@ -14,34 +14,33 @@ import matplotlib.pyplot as plt
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
-        minibatch_size: int=16, show_progress: bool = False, try_cuda: bool = False,
-        early_stopping: bool = True, patience: int = 3, seed: int=None) -> tuple[list[float], list[float]]:
+        minibatch_size: int=16, collate_func: callable=None, show_progress: bool = False, try_cuda: bool = False,
+        early_stopping: bool = True, patience: int = 3, seed: int=None, model_path: str=None,
+        losses_path: str=None) -> None:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
     network.to(device)
 
     if seed:
-        if seed is not int:
-            raise TypeError("Seed must be int.")
+        if not isinstance(seed, int):
+            raise TypeError("Seed must be integer.")
         torch.manual_seed(seed)
 
-    # handle data
+    # Handle data
     if int(sum(splits)) != 1:
         raise ValueError("Splits must sum to 1.")
-    train_data, eval_data = random_split(data, [*tuple])
+    train_data, eval_data = random_split(data, splits)
 
     # Maybe set seed here and use shuffling if needed.
     # Also memory could be pinned on CPU
     # to make training less prone to performance problems coming
     # from potential disk I/O operations.
-    train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=minibatch_size, shuffle=True)
-    eval_dataloader = torch.utils.data.DataLoader(eval_data, batch_size=minibatch_size, shuffle=True)
+    train_dataloader = torch.utils.data.DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size, shuffle=True)
+    eval_dataloader = torch.utils.data.DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size, shuffle=True)
 
-    # hand model parameters to optimizer
+    # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
-    # instantiate loss
-    loss_function = torch.nn.MSELoss()
 
     training_losses = []
     eval_losses = []
@@ -58,7 +57,7 @@ def training_loop(
 
             # compute loss and propagate back
             pred = network(train_batch)
-            loss = loss_function(torch.squeeze(pred, dim=0), target_batch)
+            loss = loss_function(pred, target_batch)
             loss.backward()
 
             # update model parameters
@@ -76,7 +75,7 @@ def training_loop(
             target_batch = target_batch.to(device)
 
             pred = network(eval_batch)
-            loss = loss_function(torch.squeeze(pred, dim=0), target_batch)
+            loss = loss_function(pred, target_batch)
 
             eval_minibatch_losses.append(loss.detach().cpu())
         eval_losses.append(torch.mean(torch.stack(eval_minibatch_losses)))
@@ -85,20 +84,44 @@ def training_loop(
             # mabye restrict the search to the last few entries
             min_index = eval_losses.index(min(eval_losses))
             if len(eval_losses) - 1 - min_index == patience:
-                # for the sake of completeness, maybe also send network back to cpu here 
-                return training_losses, eval_losses
+                # for the sake of completeness, maybe also send network back to cpu here
+                network.to('cpu')
+                if model_path and isinstance(model_path, str):
+                    torch.save(network.state_dict(), model_path)
+
+                if losses_path and isinstance(losses_path, str):
+                    plot_losses(training_losses, eval_losses, losses_path)
+                return
 
     # change device back to cpu
     network.to('cpu')
+    if model_path and isinstance(model_path, str):
+        torch.save(network.state_dict(), model_path)
 
-    return training_losses, eval_losses
+    if losses_path and isinstance(losses_path, str):
+        plot_losses(training_losses, eval_losses, losses_path)
+    return
 
 def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
+    """
+    Used for plotting samples obatained directly from the random pixelation dataset's
+    __getitem__ method. The images are expected to be scaled to [0, 1].
+    """
     pixelated_image, known_array, target_array, path = data_sample
     fig, axs = plt.subplots(1, 3, figsize=(12, 6))
-    axs[0].imshow(pixelated_image[0], cmap='gray', vmin=0, vmax=255)
+    axs[0].imshow(pixelated_image[0], cmap='gray', vmin=0, vmax=1)
     axs[1].imshow(known_array[0], cmap='gray', vmin=0, vmax=1)
-    axs[2].imshow(target_array[0], cmap='gray', vmin=0, vmax=255)
+    axs[2].imshow(target_array[0], cmap='gray', vmin=0, vmax=1)
     plt.suptitle(path)
     plt.show()
-    
+
+def plot_losses(training_losses: list[float], eval_losses: list[float], path: str) -> None:
+    """
+    Takes in training losses and evaluation losses and saves plots to path-directory.
+    """
+    plt.plot(training_losses, label='Train loss')
+    plt.plot(eval_losses, label='Evaluation loss')
+    plt.ylabel('MSE Loss')
+    plt.xlabel('Epoch')
+    plt.legend()
+    plt.savefig(path)

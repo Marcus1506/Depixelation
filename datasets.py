@@ -12,6 +12,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 
 from data_utils import to_grayscale, prepare_image, random_det, stack_with_padding
+from utils import plot_sample
 
 class RandomImagePixelationDataset(Dataset):
     """Dataset class for randomly pixelated images. Currently uses indices as random seeds.
@@ -84,3 +85,5 @@ if __name__ == "__main__":
         print(i)
         print(stacked_input.shape)
         print(target_array.shape)
+    
+    plot_sample(data[0])

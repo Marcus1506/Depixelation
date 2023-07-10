@@ -8,11 +8,18 @@ import numpy as np
 import random
 import torch
 
-def to_grayscale(pil_image: np.ndarray) -> np.ndarray:
-    """Converts a PIL image to grayscale."""
+def to_grayscale(pil_image: np.ndarray, scale_back: bool=False) -> np.ndarray:
+    """
+    Takes in PIL image and returns grayscale image as numpy array.
+    Input can be of shape (H, W) or (H, W, 3). If input is (H, W), it is assumed to be grayscale.
+    Input is assumed to be in range [0, 255] and will optionally be scaled back to [0, 255] before return.
+    """
 
     if pil_image.ndim == 2:
-        return pil_image.copy()[None]
+        if scale_back:
+            return pil_image.copy()[None]
+        else:
+            return pil_image.copy()[None] / 255
     if pil_image.ndim != 3:
         raise ValueError("image must have either shape (H, W) or (H, W, 3)")
     if pil_image.shape[2] != 3:
@@ -31,11 +38,11 @@ def to_grayscale(pil_image: np.ndarray) -> np.ndarray:
         12.92 * grayscale_linear,
         1.055 * grayscale_linear ** (1 / 2.4) - 0.055
     )
-    grayscale = grayscale * 255
+
+    if scale_back:
+        grayscale = grayscale * 255
     
-    if np.issubdtype(pil_image.dtype, np.integer):
-        grayscale = np.round(grayscale)
-    return grayscale.astype(pil_image.dtype)[None]
+    return grayscale[None]
 
 def prepare_image(
         image: np.ndarray, x: int, y: int, width: int, height: int, size: int) -> \
@@ -102,11 +109,13 @@ def random_det(img, index, width_range, height_range, size_range) -> tuple[int, 
 def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]:
     """
     Handles stacking and batching of pixelated images, known arrays and targets.
-    Should stack pixelated images and known arrays into first batch and targets
+    Should stack pixelated images and known arrays into first batch and targets.
+    The returned tensors should be of shape (batch_size, 2, H, W) and (batch_size, 1, H, W),
+    with dtype torch.float32.
     """
     try:
-        stacked_pix_imgs = np.array([entry[0] for entry in batch_as_list])
-        stacked_known_arrays = np.array([entry[1] for entry in batch_as_list])
+        stacked_pix_imgs = np.array([entry[0] for entry in batch_as_list], dtype=np.float32)
+        stacked_known_arrays = np.array([entry[1] for entry in batch_as_list], dtype=np.float32)
 
         stacked_input = torch.from_numpy(np.concatenate((stacked_pix_imgs, stacked_known_arrays), axis=1))
 
@@ -115,6 +124,7 @@ def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]
     except ValueError:
         # TODO: Change this implementation to be more performant, use numpy arrays directly
         # Most of the data will be same dimensions anyway so it should be fine
+        # Output should be of shape (batch_size, 2, H, W) and (batch_size, 1, H*W)
         pix_imgs = [entry[0] for entry in batch_as_list]
         known_arrays = [entry[1] for entry in batch_as_list]
         target_arrays = [entry[2] for entry in batch_as_list]
@@ -130,12 +140,12 @@ def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]
             known_arrays[i] = np.pad(known_array, ((0, 0), (0, pad_h), (0, pad_w)), mode='constant', constant_values=1)
             target_arrays[i] = np.pad(target_arrays[i], ((0, 0), (0, pad_h), (0, pad_w)), mode='constant', constant_values=0)
         
-        pix_imgs = np.array(pix_imgs)
-        known_arrays = np.array(known_arrays)
-        target_arrays = torch.from_numpy(np.array(target_arrays))
-
+        pix_imgs = np.array(pix_imgs, dtype=np.float32)
+        known_arrays = np.array(known_arrays, dtype=np.float32)
         stacked_input = torch.from_numpy(np.concatenate((pix_imgs, known_arrays), axis=1))
-        
+
+        target_arrays = torch.flatten(torch.from_numpy(np.array(target_arrays, dtype=np.float32)), start_dim=-2)
+
         return stacked_input, target_arrays
     except:
         raise ValueError("Something went wrong with stacking the batch")

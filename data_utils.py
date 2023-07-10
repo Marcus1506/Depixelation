@@ -6,6 +6,7 @@ Provides data utility for the project.
 
 import numpy as np
 import random
+import torch
 
 def to_grayscale(pil_image: np.ndarray) -> np.ndarray:
     """Converts a PIL image to grayscale."""
@@ -62,10 +63,7 @@ def prepare_image(
     known_array = np.ones_like(image, dtype=bool)
     known_array[area] = False
     
-    # Create a copy to avoid that "target_array" and "image" point to the same array
-    target_array = image[area].copy()
-    
-    return pixelated_image, known_array, target_array
+    return pixelated_image, known_array, image
 
 def pixelate(image: np.ndarray, x: int, y: int, width: int, height: int, size: int) -> np.ndarray:
     """"Pixelates are defined by parameters, by replacing parts of the image by mean values of specified size."""
@@ -100,3 +98,44 @@ def random_det(img, index, width_range, height_range, size_range) -> tuple[int, 
     
     size = random.randint(*size_range)
     return x, y, width, height, size
+
+def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]:
+    """
+    Handles stacking and batching of pixelated images, known arrays and targets.
+    Should stack pixelated images and known arrays into first batch and targets
+    """
+    try:
+        stacked_pix_imgs = np.array([entry[0] for entry in batch_as_list])
+        stacked_known_arrays = np.array([entry[1] for entry in batch_as_list])
+
+        stacked_input = torch.from_numpy(np.concatenate((stacked_pix_imgs, stacked_known_arrays), axis=1))
+
+        target_arrays = torch.from_numpy(np.array([entry[2] for entry in batch_as_list]))
+        return stacked_input, target_arrays
+    except ValueError:
+        # TODO: Change this implementation to be more performant, use numpy arrays directly
+        # Most of the data will be same dimensions anyway so it should be fine
+        pix_imgs = [entry[0] for entry in batch_as_list]
+        known_arrays = [entry[1] for entry in batch_as_list]
+        target_arrays = [entry[2] for entry in batch_as_list]
+
+        max_height = max(pix_imgs, key=lambda x: x.shape[-2]).shape[-2]
+        max_width = max(pix_imgs, key=lambda x: x.shape[-1]).shape[-1]
+        
+        for i, (pix_img, known_array) in enumerate(zip(pix_imgs, known_arrays)):
+            pad_h = max_height - pix_img.shape[-2]
+            pad_w = max_width - pix_img.shape[-1]
+            
+            pix_imgs[i] = np.pad(pix_img, ((0, 0), (0, pad_h),(0, pad_w)), mode='constant', constant_values=0)
+            known_arrays[i] = np.pad(known_array, ((0, 0), (0, pad_h), (0, pad_w)), mode='constant', constant_values=1)
+            target_arrays[i] = np.pad(target_arrays[i], ((0, 0), (0, pad_h), (0, pad_w)), mode='constant', constant_values=0)
+        
+        pix_imgs = np.array(pix_imgs)
+        known_arrays = np.array(known_arrays)
+        target_arrays = torch.from_numpy(np.array(target_arrays))
+
+        stacked_input = torch.from_numpy(np.concatenate((pix_imgs, known_arrays), axis=1))
+        
+        return stacked_input, target_arrays
+    except:
+        raise ValueError("Something went wrong with stacking the batch")

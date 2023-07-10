@@ -1,6 +1,7 @@
-# project data
+# custom
 dataset/
 data_sandbox/
+*.data
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

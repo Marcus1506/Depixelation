@@ -8,7 +8,10 @@ import numpy as np
 from torch.utils.data import Dataset
 from pathlib import Path
 from PIL import Image
-from data_utils import to_grayscale, prepare_image, random_det
+from torchvision import transforms
+from torch.utils.data import DataLoader
+
+from data_utils import to_grayscale, prepare_image, random_det, stack_with_padding
 
 class RandomImagePixelationDataset(Dataset):
     """Dataset class for randomly pixelated images. Currently uses indices as random seeds.
@@ -38,11 +41,16 @@ class RandomImagePixelationDataset(Dataset):
         self.dtype = dtype
         
         self.files = sorted(Path(image_dir).absolute().rglob('*.jpg'))
+
+        # Since the same transform method was applied we will hardcode some of it:
+        self.std_transforms = transforms.Compose([
+            transforms.Resize(size=64, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.CenterCrop(size=(64, 64))])
     
     def __getitem__(self, index: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, str]:
         img = np.array(Image.open(self.files[index]), dtype = self.dtype)
         img = to_grayscale(img)
-        
+
         x, y, width, height, size = random_det(img, index, self.width_range, self.height_range, self.size_range)
         
         pixelated_image, known_array, target_array = prepare_image(img, x, y, width, height, size)
@@ -66,3 +74,13 @@ class DepixDataset(Dataset):
         img = np.array(Image.open(self.files[index]), dtype = self.dtype)
         img = to_grayscale(img)
         return img
+
+if __name__ == "__main__":
+    data = RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16))
+    
+    dataloader = DataLoader(data, batch_size=5, collate_fn=stack_with_padding, shuffle=True, num_workers=0)
+
+    for i, (stacked_input, target_array) in enumerate(dataloader):
+        print(i)
+        print(stacked_input.shape)
+        print(target_array.shape)

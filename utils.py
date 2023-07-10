@@ -15,11 +15,16 @@ def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
         minibatch_size: int=16, show_progress: bool = False, try_cuda: bool = False,
-        early_stopping: bool = True, patience: int = 3) -> tuple[list[float], list[float]]:
+        early_stopping: bool = True, patience: int = 3, seed: int=None) -> tuple[list[float], list[float]]:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
     network.to(device)
+
+    if seed:
+        if seed is not int:
+            raise TypeError("Seed must be int.")
+        torch.manual_seed(seed)
 
     # handle data
     if int(sum(splits)) != 1:
@@ -90,7 +95,7 @@ def training_loop(
 
 def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
     pixelated_image, known_array, target_array, path = data_sample
-    fig, axs = plt.subplots(1, 3, figsize=(10, 10))
+    fig, axs = plt.subplots(1, 3, figsize=(12, 6))
     axs[0].imshow(pixelated_image[0], cmap='gray', vmin=0, vmax=255)
     axs[1].imshow(known_array[0], cmap='gray', vmin=0, vmax=1)
     axs[2].imshow(target_array[0], cmap='gray', vmin=0, vmax=255)

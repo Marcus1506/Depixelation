@@ -38,6 +38,8 @@ class SimpleCNN(torch.nn.Module):
                                             padding=padding, padding_mode=padding_mode, stride=stride, dilation=dilation)
         self.output_activation = activation_function()
 
+        self.flatten = torch.nn.Flatten()
+
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.input_layer(input)
         if self.use_batchnorm:
@@ -46,4 +48,5 @@ class SimpleCNN(torch.nn.Module):
         x = self.hidden_layers(x)
         x = self.output_layer(x)
         x = self.output_activation(x)
+        x = self.flatten(x)
         return x

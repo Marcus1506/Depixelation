@@ -15,12 +15,12 @@ from data_utils import stack_with_padding
 if __name__ == '__main__':
     data = datasets.RandomImagePixelationDataset('dataset/training', (4, 32), (4, 32), (4, 16))
 
-    model = DepixCNN(2, 1, 14, (2, 6))
+    model = SimpleCNN(2, 1, 14, (6, 2))
 
     training_loop(model, data, 1000, torch.optim.Adam, torch.nn.MSELoss(), (0.9, 0.1), 32, stack_with_padding,
-                  True, True, True, 10, 'models/DepixCNN_vkernel_steep(2,6)_skip5.pt', 'losses/DepixCNN_vkernel_steep(2,6)_skip5.jpg', 6, True, 10)
+                  True, True, True, 12, 'models/SimpleCNN_vkernel(6,2).pt', 'losses/SimpleCNN_vkernel(6,2).jpg', 6, True, 10)
     
     check_overfitting(datasets.RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16)),
-                      "models/DepixCNN_vkernel_steep(2,6)_skip5.pt")
+                      "models/SimpleCNN_vkernel(6,2).pt")
     
     

@@ -164,15 +164,33 @@ class BasicBlock(torch.nn.Module):
         x = self.relu(x)
         return x
     
-class DeepixCNN(torch.nn.Module):
+class SimpleDeepixCNN(torch.nn.Module):
     """
     This architecture aims to combine SkipBlocks and BasicBlocks.
+    It concatenates num_BasicBlocks BasicBlocks and then passes the output
+    to one SkipBlock, from which a copy of the original input is skipped to.
+    Also, kernel interpolation is applied, meaning that kernel size changes
+    according to model depth (see kernel_interp).
     """
-    def __init__(self):
+    def __init__(
+            self, input_channels: int, output_channels: int, num_BasicBlocks: int,
+            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True,
+            padding: str='same') -> None:
         super().__init__()
-    
-    def forward(self, output: torch.Tensor) -> torch.Tensor:
-        pass
+
+        basic_blocks = []
+        for _ in range(num_BasicBlocks):
+            basic_blocks.append(BasicBlock(input_channels=input_channels, use_batchnorm=use_batchnorm,
+                                          kernel_size=kernel_interp(kernel_size, _, num_BasicBlocks)))
+        self.basic_blocks = torch.nn.Sequential(*basic_blocks)
+
+        self.skip_block = SkipBlock(input_channels=input_channels, output_channels=output_channels,
+                                    use_batchnorm=use_batchnorm, kernel_size=kernel_size)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.basic_blocks(input)
+        x = self.skip_block(input, x)
+        return x
 
 if __name__ == '__main__':
     model = SimpleCNN(2, 1, 5, 3)

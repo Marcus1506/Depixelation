@@ -96,24 +96,25 @@ class SkipBlock(torch.nn.Module):
     """
     Makes up a basic block which takes in an earlier input and the output of the
     current forward pass and concatenates them before passing them through an additional
-    convolutional layer.
+    2-layered convolutional layer.
     """
-    def __init__(self, input: torch.Tensor, forward_output: torch.Tensor, output_channels: int,
-                 use_batchnorm: bool=True, kernel_size: int=3):
+    def __init__(self, input_channels: int, output_channels: int, use_batchnorm: bool=True,
+                 kernel_size: int=3):
         super().__init__()
 
-        self.input = input
-        self.forward_output = forward_output
-        self.input_channels = self.input.shape[-3] + self.forward_output.shape[-3]
+        self.input_channels = input_channels
         self.output_channels = output_channels
         self.kernel_size = kernel_size
         self.use_batchnorm = use_batchnorm
 
-        self.conv1 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.output_channels,
+        self.conv1 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.input_channels,
                                                padding='same', kernel_size=self.kernel_size)
         if self.use_batchnorm:
-            self.bn1 = torch.nn.BatchNorm2d(self.output_channels)
+            self.bn1 = torch.nn.BatchNorm2d(self.input_channels)
+            self.bn2 = torch.nn.BatchNorm2d(self.output_channels)
         self.relu = torch.nn.ReLU()
+        self.conv2 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.output_channels,
+                                     padding='same', kernel_size=self.kernel_size)
 
     def forward(self, input: torch.Tensor, forward_output: torch.Tensor) -> torch.Tensor:
         x = torch.cat((input, forward_output), dim=-3)
@@ -121,7 +122,57 @@ class SkipBlock(torch.nn.Module):
         if self.use_batchnorm:
             x = self.bn1(x)
         x = self.relu(x)
+        x = self.conv2(x)
+        if self.use_batchnorm:
+            x = self.bn2(x)
+        x = self.relu(x)
         return x
+
+class BasicBlock(torch.nn.Module):
+    """
+    This building block is even more similiar to the original ResNet BasicBlocks, but
+    instead of adding the image values, here they are concatenated. Adding earlier values
+    as an additional channel seems to make more sense for this use case and its use
+    is motivated entirely on heuristics.
+    """
+    def __init__(self, input_channels: int, use_batchnorm: bool=True,
+                 kernel_size: int=3):
+        super().__init__()
+
+        self.input_channels = input_channels
+        self.kernel_size = kernel_size
+        self.use_batchnorm = use_batchnorm
+
+        self.conv1 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.input_channels,
+                                     padding='same', kernel_size=self.kernel_size)
+        if self.use_batchnorm:
+            self.bn1 = torch.nn.BatchNorm2d(self.input_channels)
+            self.bn2 = torch.nn.BatchNorm2d(self.output_channels)
+        self.relu = torch.nn.ReLU()
+        self.conv2 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.input_channels,
+                                     padding='same', kernel_size=self.kernel_size)
+        
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.conv1(input)
+        if self.use_batchnorm:
+            x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        if self.use_batchnorm:
+            x = self.bn2(x)
+        x = torch.cat((input, x), dim=-3)
+        x = self.relu(x)
+        return x
+    
+class DeepixCNN(torch.nn.Module):
+    """
+    This architecture aims to combine SkipBlocks and BasicBlocks.
+    """
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, output: torch.Tensor) -> torch.Tensor:
+        pass
 
 if __name__ == '__main__':
     model = SimpleCNN(2, 1, 5, 3)

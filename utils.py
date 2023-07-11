@@ -158,8 +158,10 @@ def check_overfitting(data: torch.utils.data.Dataset, model_path: str) -> None:
     """
     model = torch.load(model_path)
     model.eval()
+    # just to be sure:
+    model.to('cpu')
     with torch.no_grad():
-        for i in range(4):
+        for i in range(10):
             truth = data.get_image(i)
             pix = data[i][0]
             

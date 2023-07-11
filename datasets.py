@@ -20,7 +20,7 @@ class RandomImagePixelationDataset(Dataset):
 
     def __init__(self, image_dir: str, width_range: tuple[int, int],
                 height_range: tuple[int, int], size_range: tuple[int, int],
-                dtype = None):
+                dtype = None, true_random = True):
         
         if width_range[0] < 2:
             raise ValueError("Width min value too small!")
@@ -40,6 +40,7 @@ class RandomImagePixelationDataset(Dataset):
         self.height_range = height_range
         self.size_range = size_range
         self.dtype = dtype
+        self.true_random = true_random
         
         self.files = sorted(Path(image_dir).absolute().rglob('*.jpg'))
 
@@ -53,7 +54,12 @@ class RandomImagePixelationDataset(Dataset):
         img = np.array(img, dtype = self.dtype)
         img = to_grayscale(img)
 
-        x, y, width, height, size = random_det(img, index, self.width_range, self.height_range, self.size_range)
+        if self.true_random:
+            rng = np.random.default_rng()
+            seed = rng.integers(0, 2**16 - 1, dtype=int)
+        else:
+            seed = index
+        x, y, width, height, size = random_det(img, seed, self.width_range, self.height_range, self.size_range)
         
         pixelated_image, known_array, target_array = prepare_image(img, x, y, width, height, size)
         return pixelated_image, known_array, target_array, self.files[index]

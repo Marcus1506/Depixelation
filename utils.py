@@ -13,33 +13,44 @@ import matplotlib.pyplot as plt
 import pickle
 
 from submission.submission_serialization import serialize, deserialize
+
+def checkpoint(model: torch.nn.Module, model_path: str, device:str) -> None:
+    """
+    Saves a model to a given path. Brings model to CPU for saving.
+    then back to device.
+    """
+    model.to('cpu')
+    if isinstance(model_path, str):
+        torch.save(model, model_path)
+    model.to(device)
+    return
+
 # TODO: Add number of workers for dataloaders, add true random seed, improve early stopping by saving best model
 # Consider pinning memory to CPU for dataloaders, try non_blocking=True with removing syncs in epoch loop
 def training_loop(
         network: torch.nn.Module, data: torch.utils.data.Dataset, num_epochs: int,
         optimizer: torch.optim.Optimizer, loss_function: torch.nn.Module, splits: tuple[float, float],
         minibatch_size: int=16, collate_func: callable=None, show_progress: bool = False, try_cuda: bool = False,
-        early_stopping: bool = True, patience: int = 3, seed: int=None, model_path: str=None,
-        losses_path: str=None, workers: int=0, pin_memory: bool=True, prefetch_factor: int=2) -> None:
+        early_stopping: bool = True, patience: int = 3, model_path: str=None, losses_path: str=None,
+        workers: int=0, pin_memory: bool=True, prefetch_factor: int=2) -> None:
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
     network.to(device)
 
-    if seed:
-        if not isinstance(seed, int):
-            raise TypeError("Seed must be integer.")
-        torch.manual_seed(seed)
+    if data.true_random:
+        rng = np.random.default_rng()
+        seed = rng.integers(0, 2**16 - 1, dtype=int)
+    else:
+        seed = 42
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
     # Handle data
     if int(sum(splits)) != 1:
         raise ValueError("Splits must sum to 1.")
     train_data, eval_data = random_split(data, splits)
 
-    # Maybe set seed here and use shuffling if needed.
-    # Also memory could be pinned on CPU
-    # to make training less prone to performance problems coming
-    # from potential disk I/O operations.
     train_dataloader = DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size,
                                   shuffle=True, num_workers=workers, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
     eval_dataloader = DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size,
@@ -50,13 +61,14 @@ def training_loop(
 
     training_losses = []
     eval_losses = []
+    min_index = 0
     for epoch in tqdm(range(num_epochs), disable=not show_progress):
         # set model to training mode
         network.train()
         train_minibatch_losses = []
         for train_batch, target_batch in train_dataloader:
-            train_batch = train_batch.to(device)
-            target_batch = target_batch.to(device)
+            train_batch = train_batch.to(device, non_blocking=True)
+            target_batch = target_batch.to(device, non_blocking=True)
 
             # clear gradients
             network.zero_grad()
@@ -77,8 +89,8 @@ def training_loop(
         # set model to eval mode
         network.eval()
         for eval_batch, target_batch in eval_dataloader:
-            eval_batch = eval_batch.to(device)
-            target_batch = target_batch.to(device)
+            eval_batch = eval_batch.to(device, non_blocking=True)
+            target_batch = target_batch.to(device, non_blocking=True)
 
             pred = network(eval_batch)
             loss = loss_function(pred, target_batch)
@@ -88,23 +100,18 @@ def training_loop(
 
         if early_stopping:
             # mabye restrict the search to the last few entries
-            min_index = eval_losses.index(min(eval_losses))
-            if len(eval_losses) - 1 - min_index == patience:
-                # for the sake of completeness, maybe also send network back to cpu here
-                network.to('cpu')
-                if model_path and isinstance(model_path, str):
-                    torch.save(network, model_path)
-
-                if losses_path and isinstance(losses_path, str):
+            min_index_new = eval_losses.index(min(eval_losses))
+            if min_index_new != min_index: # model has improved
+                checkpoint(network, model_path, device)
+            elif len(eval_losses) - 1 - min_index_new == patience:
+                if isinstance(losses_path, str):
                     plot_losses(training_losses, eval_losses, losses_path)
+                network.to('cpu')
                 return
+            min_index = min_index_new
 
-    # change device back to cpu
-    network.to('cpu')
-    if model_path and isinstance(model_path, str):
-        torch.save(network, model_path)
-
-    if losses_path and isinstance(losses_path, str):
+    checkpoint(network, model_path, device)
+    if isinstance(losses_path, str):
         plot_losses(training_losses, eval_losses, losses_path)
     return
 

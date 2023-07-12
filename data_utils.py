@@ -7,6 +7,7 @@ Provides data utility for the project.
 import numpy as np
 import random
 import torch
+from pathlib import Path
 
 def to_grayscale(pil_image: np.ndarray, scale_back: bool=False) -> np.ndarray:
     """
@@ -149,3 +150,9 @@ def stack_with_padding(batch_as_list: list) -> tuple[torch.tensor, torch.tensor]
         return stacked_input, target_arrays
     except:
         raise ValueError("Something went wrong with stacking the batch")
+
+def get_files(path: str, extensions: list[str]) -> list[Path]:
+    all_files = []
+    for ext in extensions:
+        all_files.extend(Path(path).absolute().rglob(ext))
+    return all_files

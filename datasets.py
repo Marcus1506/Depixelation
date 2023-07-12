@@ -11,7 +11,7 @@ from PIL import Image
 from torchvision import transforms
 from torch.utils.data import DataLoader
 
-from data_utils import to_grayscale, prepare_image, random_det, stack_with_padding
+from data_utils import to_grayscale, prepare_image, random_det, stack_with_padding, get_files
 from utils import plot_sample
 
 class RandomImagePixelationDataset(Dataset):
@@ -20,7 +20,7 @@ class RandomImagePixelationDataset(Dataset):
 
     def __init__(self, image_dir: str, width_range: tuple[int, int],
                 height_range: tuple[int, int], size_range: tuple[int, int],
-                dtype = None, true_random = True):
+                dtype = None, true_random = True, extensions: list[str] = ['*.jpg', '*.png']):
         
         if width_range[0] < 2:
             raise ValueError("Width min value too small!")
@@ -36,13 +36,15 @@ class RandomImagePixelationDataset(Dataset):
         if size_range[0] > size_range[1]:
             raise ValueError("Size min bigger than max!")
         
+        self.image_dir = image_dir
         self.width_range = width_range
         self.height_range = height_range
         self.size_range = size_range
         self.dtype = dtype
         self.true_random = true_random
+        self.extensions = extensions
         
-        self.files = sorted(Path(image_dir).absolute().rglob('*.jpg'))
+        self.files = sorted(get_files(self.image_dir, self.extensions))
 
         # Since the same transform method was applied we will hardcode some of it:
         self.std_transforms = transforms.Compose([
@@ -90,13 +92,6 @@ class DepixDataset(Dataset):
         return img
 
 if __name__ == "__main__":
-    data = RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16))
+    data = RandomImagePixelationDataset('dataset_serious', (4, 32), (4, 32), (4, 16))
     
-    dataloader = DataLoader(data, batch_size=5, collate_fn=stack_with_padding, shuffle=True, num_workers=0)
-
-    for i, (stacked_input, target_array) in enumerate(dataloader):
-        print(i)
-        print(stacked_input.shape)
-        print(target_array.shape)
-    
-    plot_sample(data[0])
+    print(len(data))

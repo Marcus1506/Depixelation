@@ -137,6 +137,9 @@ class BasicBlock(torch.nn.Module):
     After two initial convolutional layers, the input is concatenated with the output
     and another convolutional layer is applied, reducing the channel dimension back to
     the original input_channels.
+
+    input.shape = (batch_size, input_channels, height, width)
+    output.shape = (batch_size, input_channels, height, width)
     """
     def __init__(self, input_channels: int, use_batchnorm: bool=True,
                  kernel_size: int=3):
@@ -184,8 +187,7 @@ class SimpleDeepixCNN(torch.nn.Module):
     """
     def __init__(
             self, input_channels: int, output_channels: int, num_BasicBlocks: int,
-            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True,
-            padding: str='same') -> None:
+            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True) -> None:
         super().__init__()
 
         # Input Block
@@ -199,18 +201,61 @@ class SimpleDeepixCNN(torch.nn.Module):
         self.basic_blocks = torch.nn.Sequential(*basic_blocks)
 
         self.skip_block = SkipBlock(input_channels=2*input_channels, output_channels=output_channels,
-                                    use_batchnorm=use_batchnorm, kernel_size=kernel_size[1])
+                                    use_batchnorm=use_batchnorm, kernel_size=kernel_size[0])
+        
+        #self.skip_block2 = SkipBlock(input_channels=input_channels+output_channels, output_channels=output_channels,
+        #                            use_batchnorm=use_batchnorm, kernel_size=kernel_size[1])
         
         self.flatten = torch.nn.Flatten(start_dim=-2)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.basic_blocks(input)
         x = self.skip_block(input, x)
+        #x = self.skip_block2(input, x)
         # input.shape = (batch_size, 2, height, width)
         x = torch.where(input[:, 1, :, :] == 0., x[:, 0, :, :], input[:, 0, :, :])
         x = torch.unsqueeze(x, dim=1)
         x = self.flatten(x)
         return x
+
+class DeepixCNN_noskip(torch.nn.Module):
+    """
+    Trying BasicBlocks only.
+    """
+    def __init__(
+            self, input_channels: int, output_channels: int, num_BasicBlocks: int,
+            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True,
+            padding: str='same') -> None:
+        super().__init__()
+
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.num_BasicBlocks = num_BasicBlocks
+        self.kernel_size = kernel_size
+        self.use_batchnorm = use_batchnorm
+        self.padding = padding
+
+        basic_blocks = []
+        for _ in range(self.num_BasicBlocks):
+            basic_blocks.append(BasicBlock(input_channels=self.input_channels, use_batchnorm=self.use_batchnorm,
+                                          kernel_size=kernel_interp(self.kernel_size, _, self.num_BasicBlocks)))
+        self.basic_blocks = torch.nn.Sequential(*basic_blocks)
+
+        # unification block
+        self.unification_block = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.output_channels,
+                                                 padding=self.padding, kernel_size=self.kernel_size[0])
+
+        self.flatten = torch.nn.Flatten(start_dim=-2)
+    
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.basic_blocks(input)
+        x = self.unification_block(x)
+        # input.shape = (batch_size, 2, height, width)
+        x = torch.where(input[:, 1, :, :] == 0., x[:, 0, :, :], input[:, 0, :, :])
+        x = torch.unsqueeze(x, dim=1)
+        x = self.flatten(x)
+        return x
+
 
 if __name__ == '__main__':
     model = SimpleCNN(2, 1, 5, 3)

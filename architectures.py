@@ -134,6 +134,9 @@ class BasicBlock(torch.nn.Module):
     instead of adding the image values, here they are concatenated. Adding earlier values
     as an additional channel seems to make more sense for this use case and its use
     is motivated entirely on heuristics.
+    After two initial convolutional layers, the input is concatenated with the output
+    and another convolutional layer is applied, reducing the channel dimension back to
+    the original input_channels.
     """
     def __init__(self, input_channels: int, use_batchnorm: bool=True,
                  kernel_size: int=3):
@@ -147,9 +150,12 @@ class BasicBlock(torch.nn.Module):
                                      padding='same', kernel_size=self.kernel_size)
         if self.use_batchnorm:
             self.bn1 = torch.nn.BatchNorm2d(self.input_channels)
-            self.bn2 = torch.nn.BatchNorm2d(self.output_channels)
+            self.bn2 = torch.nn.BatchNorm2d(self.input_channels)
+            self.bn3 = torch.nn.BatchNorm2d(self.input_channels)
         self.relu = torch.nn.ReLU()
         self.conv2 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.input_channels,
+                                     padding='same', kernel_size=self.kernel_size)
+        self.conv3 = torch.nn.Conv2d(in_channels=2*self.input_channels, out_channels=self.input_channels,
                                      padding='same', kernel_size=self.kernel_size)
         
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -161,6 +167,10 @@ class BasicBlock(torch.nn.Module):
         if self.use_batchnorm:
             x = self.bn2(x)
         x = torch.cat((input, x), dim=-3)
+        x = self.relu(x)
+        x = self.conv3(x)
+        if self.use_batchnorm:
+            x = self.bn3(x)
         x = self.relu(x)
         return x
     
@@ -178,18 +188,28 @@ class SimpleDeepixCNN(torch.nn.Module):
             padding: str='same') -> None:
         super().__init__()
 
+        # Input Block
+        self.input_block = BasicBlock(input_channels=input_channels, use_batchnorm=use_batchnorm,
+                                      kernel_size=kernel_size[0])
+
         basic_blocks = []
         for _ in range(num_BasicBlocks):
             basic_blocks.append(BasicBlock(input_channels=input_channels, use_batchnorm=use_batchnorm,
                                           kernel_size=kernel_interp(kernel_size, _, num_BasicBlocks)))
         self.basic_blocks = torch.nn.Sequential(*basic_blocks)
 
-        self.skip_block = SkipBlock(input_channels=input_channels, output_channels=output_channels,
-                                    use_batchnorm=use_batchnorm, kernel_size=kernel_size)
+        self.skip_block = SkipBlock(input_channels=2*input_channels, output_channels=output_channels,
+                                    use_batchnorm=use_batchnorm, kernel_size=kernel_size[1])
+        
+        self.flatten = torch.nn.Flatten(start_dim=-2)
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         x = self.basic_blocks(input)
         x = self.skip_block(input, x)
+        # input.shape = (batch_size, 2, height, width)
+        x = torch.where(input[:, 1, :, :] == 0., x[:, 0, :, :], input[:, 0, :, :])
+        x = torch.unsqueeze(x, dim=1)
+        x = self.flatten(x)
         return x
 
 if __name__ == '__main__':

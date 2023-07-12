@@ -53,8 +53,9 @@ def training_loop(
 
     train_dataloader = DataLoader(train_data, collate_fn=collate_func, batch_size=minibatch_size,
                                   shuffle=True, num_workers=workers, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
+    # a little less workers for eval is generally good in most cases
     eval_dataloader = DataLoader(eval_data, collate_fn=collate_func, batch_size=minibatch_size,
-                                  shuffle=True, num_workers=workers, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
+                                  shuffle=True, num_workers=(workers+1)//2, pin_memory=pin_memory, prefetch_factor=prefetch_factor)
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
@@ -88,14 +89,15 @@ def training_loop(
         eval_minibatch_losses = []
         # set model to eval mode
         network.eval()
-        for eval_batch, target_batch in eval_dataloader:
-            eval_batch = eval_batch.to(device, non_blocking=True)
-            target_batch = target_batch.to(device, non_blocking=True)
+        with torch.no_grad():
+            for eval_batch, target_batch in eval_dataloader:
+                eval_batch = eval_batch.to(device, non_blocking=True)
+                target_batch = target_batch.to(device, non_blocking=True)
 
-            pred = network(eval_batch)
-            loss = loss_function(pred, target_batch)
+                pred = network(eval_batch)
+                loss = loss_function(pred, target_batch)
 
-            eval_minibatch_losses.append(loss.detach().cpu())
+                eval_minibatch_losses.append(loss.detach().cpu())
         eval_losses.append(torch.mean(torch.stack(eval_minibatch_losses)))
 
         if early_stopping:
@@ -115,7 +117,7 @@ def training_loop(
         plot_losses(training_losses, eval_losses, losses_path)
     return
 
-def test_loop_serialized(model_path: str, data_path: str) -> None:
+def test_loop_serialized(model_path: str, data_path: str, submission_path: str) -> None:
     """
     This function is used to test the specified model (model_path) on the provided
     pickle file, which serves as a test set. The predictions should be gathered in a
@@ -130,13 +132,17 @@ def test_loop_serialized(model_path: str, data_path: str) -> None:
     with open(data_path, 'rb') as f:
         dictionary = pickle.load(f)
         with torch.no_grad():
+            a=1
             for (pixelated_image, known_array) in zip(dictionary['pixelated_images'], dictionary['known_arrays']):
-                input = np.concatenate((pixelated_image, known_array), axis=0)
+                input = np.concatenate((pixelated_image/255, known_array), axis=0)
                 input = torch.from_numpy(input).unsqueeze(0).float()
                 pred = model(input).numpy()*255
                 pred = pred.astype(np.uint8)
-                visualize_flat_u8int(pred)
-                break
+                pred = np.squeeze(pred)
+                # Prediction should only be the unknown part of the image:
+                predictions.append(np.extract(known_array.flatten() == 0, pred))
+    
+    serialize(predictions, submission_path)
 
 def plot_sample(data_sample: tuple[np.ndarray, np.ndarray, np.ndarray, str]) -> None:
     """
@@ -206,5 +212,5 @@ def kernel_interp(range: tuple[int, int], num:int, hidden_layers:int) -> int:
 
 if __name__ == '__main__':
     # Test set prediction and serialization:
-    # test_loop_serialized("models/SimpleCNN_Sandbox.pt", "submission/test_set.pkl")
+    test_loop_serialized("models/SimpleDeepixCNN6(6,3).pt", "submission/test_set.pkl", "submission/submission.pkl")
     pass

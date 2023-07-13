@@ -1,7 +1,10 @@
 # Depixilation
     The goal of this project was to "depixelate" pixelated parts of images.
-    Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image dataset with certain parts pixelated, the following work tailored towards this special case.
-    During training pixelation was done randomly on each image and both the pixelated image, as well as a mask which signalled where on the image the pixelation took place, was fed into an according architecture. This means the model did NOT have to learn to infer where pixelation took place and could focus solely on the task of incribing appropiate pixels in the respective fields.
+    Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
+    dataset with certain parts pixelated, the following work tailored towards this special case.
+    During training pixelation was done randomly on each image and both the pixelated image, as well as a
+    mask which signalled where on the image the pixelation took place, was fed into an according architecture.
+    This means the model did NOT have to learn to infer where pixelation took place and could focus solely on the task of incribing appropiate pixels in the respective fields.
 
 ## Project Structure
     The files datasets.py and data_utils.py feature a variety of Code needed for the RandomImagePixelation dataset.

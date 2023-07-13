@@ -391,9 +391,9 @@ if __name__ == '__main__':
 
     #model = DeepixCNN_noskip(2, 1, 10, (7, 3))
     #model = SimpleThickCNN(2, 1, 5, (3, 6))
-    model = Deepixv1(2, 1, shape=(5, 6, 6, 7, 7), kernel_size=(3, 5))
+    model = Deepixv1(2, 1, shape=(5, 7, 9), kernel_size=(3, 5))
 
     IMG_SIZE = 64
-    BATCH_SIZE = 128
+    BATCH_SIZE = 64
 
     summary(model, (BATCH_SIZE, 2, IMG_SIZE, IMG_SIZE))

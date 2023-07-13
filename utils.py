@@ -61,7 +61,7 @@ def training_loop(
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
-    scheduler = StepLR(optimizer, step_size=15, gamma=0.1)
+    scheduler = StepLR(optimizer, step_size=12, gamma=0.1)
 
     training_losses = []
     eval_losses = []
@@ -225,5 +225,5 @@ def feature_class(order: int) -> int:
 
 if __name__ == '__main__':
     # Test set prediction and serialization:
-    test_loop_serialized("models_serious/DeepixCNN10(7,3)noskip_noinf_bigunif.pt", "submission/test_set.pkl", "submission/submission_3.pkl")
+    test_loop_serialized("models_serious/Deepixv1(5,5,6,7,8)(3,5).pt", "submission/test_set.pkl", "submission/submission_4.pkl")
     pass

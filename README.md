@@ -1,5 +1,5 @@
 # Depixilation
-    The goal of this project was to "depixelate" pixelated parts of images.
+The goal of this project was to "depixelate" pixelated parts of images.
 
     Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
     dataset with certain parts pixelated, the following work tailored towards this special case.

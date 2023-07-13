@@ -5,7 +5,8 @@ Model Architectures for the project.
 """
 
 import torch
-from utils import kernel_interp
+
+from utils import kernel_interp, feature_class
 
 class SimpleCNN(torch.nn.Module):
     def __init__(
@@ -241,7 +242,7 @@ class DeepixCNN_noskip(torch.nn.Module):
                                           kernel_size=kernel_interp(self.kernel_size, _, self.num_BasicBlocks)))
         self.basic_blocks = torch.nn.Sequential(*basic_blocks)
 
-        # unification block
+        # unification block, decided to use big kernel
         self.unification_block = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.output_channels,
                                                  padding=self.padding, kernel_size=self.kernel_size[0])
 
@@ -256,12 +257,143 @@ class DeepixCNN_noskip(torch.nn.Module):
         x = self.flatten(x)
         return x
 
+class SimpleThickCNN(torch.nn.Module):
+    def __init__(
+            self, input_channels: int, output_channels: int, length: int,
+            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True,
+            padding: str='same') -> None:
+        super().__init__()
+
+        self.input_layer = torch.nn.Conv2d(in_channels=input_channels, out_channels=32,
+                                           padding=padding, kernel_size=kernel_size[0])
+        if use_batchnorm:
+            self.bn1 = torch.nn.BatchNorm2d(32)
+        self.relu1 = torch.nn.ReLU()
+
+        hidden_channels = []
+        for _ in range(length):
+            hidden_channels.append(torch.nn.Conv2d(in_channels=32, out_channels=32,
+                                                   padding=padding, kernel_size=kernel_interp(kernel_size, _, length)))
+            if use_batchnorm:
+                hidden_channels.append(torch.nn.BatchNorm2d(32))
+            hidden_channels.append(torch.nn.ReLU())
+        self.hidden_channels = torch.nn.Sequential(*hidden_channels)
+
+        self.output_layer = torch.nn.Conv2d(in_channels=32, out_channels=output_channels,
+                                            padding=padding, kernel_size=kernel_size[1])
+        if use_batchnorm:
+            self.bn2 = torch.nn.BatchNorm2d(output_channels)
+        # maybe some other activation function?
+        self.relu2 = torch.nn.ReLU()
+        self.flatten = torch.nn.Flatten(start_dim=-2)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.input_layer(input)
+        if hasattr(self, 'bn1'):
+            x = self.bn1(x)
+        x = self.relu1(x)
+        x = self.hidden_channels(x)
+        x = self.output_layer(x)
+        if hasattr(self, 'bn2'):
+            x = self.bn2(x)
+        x = self.relu2(x)
+        x = torch.where(input[:, 1, :, :] == 0., x[:, 0, :, :], input[:, 0, :, :])
+        x = torch.unsqueeze(x, dim=1)
+        x = self.flatten(x)
+        return x
+
+class BasicAddBlock(BasicBlock):
+    def __init__(self, input_channels: int, output_channels:int, use_batchnorm: bool=True,
+               kernel_size: int=3):
+        super().__init__(input_channels, use_batchnorm, kernel_size)
+
+        self.output_channels = output_channels
+
+        # Overwrite some of the last parts:
+        self.conv3 = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=self.output_channels,
+                                     padding='same', kernel_size=self.kernel_size)
+        if self.use_batchnorm:
+            self.bn3 = torch.nn.BatchNorm2d(self.output_channels)
+        
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.conv1(input)
+        if self.use_batchnorm:
+            x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        if self.use_batchnorm:
+            x = self.bn2(x)
+        x = x + input
+        x = self.relu(x)
+        x = self.conv3(x)
+        if self.use_batchnorm:
+            x = self.bn3(x)
+        x = self.relu(x)
+        return x
+
+class Deepixv1(torch.nn.Module):
+    def __init__(
+            self, input_channels: int, output_channels: int, shape: tuple[int, ...],
+            kernel_size: tuple[int, int]=(3,3), use_batchnorm: bool=True,
+            padding: str='same') -> None:
+        super().__init__()
+
+        self.input_channels = input_channels
+        self.output_channels = output_channels
+        self.shape = shape
+        self.kernel_size = kernel_size
+        self.use_batchnorm = use_batchnorm
+        self.padding = padding
+
+        self.input_layer = torch.nn.Conv2d(in_channels=self.input_channels, out_channels=feature_class(self.shape[0]),
+                                           padding=self.padding, kernel_size=self.kernel_size[0])
+        if self.use_batchnorm:
+            self.bn1 = torch.nn.BatchNorm2d(feature_class(self.shape[0]))
+        self.input_activation = torch.nn.ReLU()
+        
+        hidden_layers = []
+        for i, (_in, _out) in enumerate(zip(shape[:-1], shape[1:])):
+            hidden_layers.append(BasicAddBlock(input_channels=feature_class(_in),
+                                                 output_channels=feature_class(_out),
+                                                 use_batchnorm=self.use_batchnorm,
+                                                 kernel_size=kernel_interp(self.kernel_size, i, len(self.shape)-1)))
+        self.hidden_layers = torch.nn.Sequential(*hidden_layers)
+        
+        # The last part of the model is subject to change
+        # A big kernel size here seems to yield better results
+        self.output_layer = torch.nn.Conv2d(in_channels=feature_class(shape[-1]), out_channels=self.output_channels,
+                                            padding=self.padding, kernel_size=self.kernel_size[1])
+        if self.use_batchnorm:
+            self.bn2 = torch.nn.BatchNorm2d(self.output_channels)
+        # Since we work with images in the range [0, 1], we use a sigmoid activation function
+        self.output_activation = torch.nn.Sigmoid()
+        self.flatten = torch.nn.Flatten(start_dim=-2)
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        x = self.input_layer(input)
+        if self.use_batchnorm:
+            x = self.bn1(x)
+        x = self.input_activation(x)
+        x = self.hidden_layers(x)
+        x = self.output_layer(x)
+        if self.use_batchnorm:
+            x = self.bn2(x)
+        x = self.output_activation(x)
+        x = torch.where(input[:, 1, :, :] == 0., x[:, 0, :, :], input[:, 0, :, :])
+        x = torch.unsqueeze(x, dim=1)
+        x = self.flatten(x)
+        return x
 
 if __name__ == '__main__':
-    model = SimpleCNN(2, 1, 5, 3)
-    
-    # (batch_size, input_channels, height, width)
-    data = torch.rand((1, 2, 32, 32))
+    # Here we can look at the architectures and estimate their complexity,
+    # as well as their behaviour during training.
+    from torchinfo import summary
 
-    # (batch_size, output_channels, height*width)
-    print(model(data).shape)
+    #model = DeepixCNN_noskip(2, 1, 10, (7, 3))
+    #model = SimpleThickCNN(2, 1, 5, (3, 6))
+    model = Deepixv1(2, 1, shape=(5, 6, 6, 7, 7), kernel_size=(3, 5))
+
+    IMG_SIZE = 64
+    BATCH_SIZE = 128
+
+    summary(model, (BATCH_SIZE, 2, IMG_SIZE, IMG_SIZE))

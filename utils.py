@@ -9,6 +9,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data import random_split
+from torch.optim.lr_scheduler import StepLR
 import matplotlib.pyplot as plt
 import pickle
 
@@ -36,6 +37,7 @@ def training_loop(
 
     # set device
     device = torch.device("cuda" if torch.cuda.is_available() and try_cuda else "cpu")
+    print(device)
     network.to(device)
 
     if data.true_random:
@@ -59,6 +61,7 @@ def training_loop(
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
+    scheduler = StepLR(optimizer, step_size=15, gamma=0.1)
 
     training_losses = []
     eval_losses = []
@@ -111,6 +114,8 @@ def training_loop(
                 network.to('cpu')
                 return
             min_index = min_index_new
+        
+        scheduler.step()
 
     checkpoint(network, model_path, device)
     if isinstance(losses_path, str):
@@ -207,10 +212,18 @@ def visualize_flat_u8int(image: np.ndarray, ax) -> None:
 def kernel_interp(range: tuple[int, int], num:int, hidden_layers:int) -> int:
     """
     Takes in num and interpolates a fitting integer into the range based on step num.
+    Always return odd, since same 
     """
-    return int(range[0] + (range[1] - range[0]) * (num / (hidden_layers + 1)))
+    interp = int(range[0] + (range[1] - range[0]) * (float(num) / (hidden_layers - 1.)))
+    if interp % 2 == 0:
+        return interp - 1
+    else:
+        return interp
+
+def feature_class(order: int) -> int:
+    return 2**order
 
 if __name__ == '__main__':
     # Test set prediction and serialization:
-    test_loop_serialized("models/SimpleDeepixCNN6(6,3).pt", "submission/test_set.pkl", "submission/submission.pkl")
+    test_loop_serialized("models_serious/DeepixCNN10(7,3)noskip_noinf_bigunif.pt", "submission/test_set.pkl", "submission/submission_3.pkl")
     pass

@@ -15,6 +15,12 @@ the task of incribing appropiate pixels in the respective fields.
 
 ![Model Predictions](final_model_performance/beautiful_samples.jpg)
 
+Notice how the model successfully continues shapes surrounding the pixelated parts of the image.
+If the neighboring section has a lot of detail, the model is not able to continue it well, this however
+is more a result of the loss being computed by the MSE to the original input than anything else, because
+rough pixelation inside an area with high detail means the model is safer to predict some sort of middleground,
+than actually trying to inpaint something that could be possible.
+
 ## Project Structure
 ### Handling Data
 The files "datasets.py" and "data_utils.py" feature a variety of Code needed for the RandomImagePixelation

@@ -22,13 +22,17 @@ if __name__ == '__main__':
 
     # now we start going wide:
     #model = SimpleThickCNN(2, 1, 5, (3, 6))
-    model = Deepixv1(2, 1, shape=(5, 7, 9), kernel_size=(3, 5))
+    # The following architecture was the final one which I used for my last submissions:
+    #model = Deepixv1(2, 1, shape=(5, 5, 6, 6, 7, 7, 8), kernel_size=(3, 5))
 
-    training_loop(model, data, 300, torch.optim.Adam, torch.nn.MSELoss(), (0.9, 0.1), 64, stack_with_padding,
-                  True, True, True, 10, 'models_serious/Deepixv1(5,7,9)(3,5).pt',
-                  'losses/Deepixv1(5,7,9)(3,5).jpg', 4, True, 20)
+    #training_loop(model, data, 150, torch.optim.Adam, torch.nn.MSELoss(), (0.9, 0.1), 64, stack_with_padding,
+    #              True, True, True, 15, 'models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt',
+    #              'losses/Deepixv1(5,5,6,6,7,7,8)(3,5).jpg', 4, True, 20)
     
-    # careful to disable true_random for checking results with the following function
+    # Sadly this model could not finish training, probably because of an power outage during the night.
+    # If this model happens to perform better, then my 5th submission is the best one.
+
+    # Careful to disable true_random for checking results with the following function
     check_overfitting(datasets.RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16), true_random=False),
-                      "models_serious/Deepixv1(5,7,9)(3,5).pt")
+                      "models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt")
     

@@ -61,7 +61,7 @@ def training_loop(
 
     # Hand model parameters to optimizer
     optimizer = optimizer(network.parameters())
-    scheduler = StepLR(optimizer, step_size=12, gamma=0.1)
+    scheduler = StepLR(optimizer, step_size=15, gamma=0.1)
 
     training_losses = []
     eval_losses = []
@@ -108,6 +108,9 @@ def training_loop(
             min_index_new = eval_losses.index(min(eval_losses))
             if min_index_new != min_index: # model has improved
                 checkpoint(network, model_path, device)
+                # Also plot losses then!
+                if isinstance(losses_path, str):
+                    plot_losses(training_losses, eval_losses, losses_path)
             elif len(eval_losses) - 1 - min_index_new == patience:
                 if isinstance(losses_path, str):
                     plot_losses(training_losses, eval_losses, losses_path)
@@ -225,5 +228,5 @@ def feature_class(order: int) -> int:
 
 if __name__ == '__main__':
     # Test set prediction and serialization:
-    test_loop_serialized("models_serious/Deepixv1(5,5,6,7,8)(3,5).pt", "submission/test_set.pkl", "submission/submission_4.pkl")
+    test_loop_serialized("models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt", "submission/test_set.pkl", "submission/submission_5.pkl")
     pass

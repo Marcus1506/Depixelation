@@ -361,6 +361,7 @@ class Deepixv1(torch.nn.Module):
         
         # The last part of the model is subject to change
         # A big kernel size here seems to yield better results
+        # ! Something like an Encoder-Decoder structure might be better here to combine extracted features
         self.output_layer = torch.nn.Conv2d(in_channels=feature_class(shape[-1]), out_channels=self.output_channels,
                                             padding=self.padding, kernel_size=self.kernel_size[1])
         if self.use_batchnorm:
@@ -391,7 +392,7 @@ if __name__ == '__main__':
 
     #model = DeepixCNN_noskip(2, 1, 10, (7, 3))
     #model = SimpleThickCNN(2, 1, 5, (3, 6))
-    model = Deepixv1(2, 1, shape=(5, 7, 9), kernel_size=(3, 5))
+    model = Deepixv1(2, 1, shape=(5, 5, 6, 6, 7, 7, 8), kernel_size=(3, 5))
 
     IMG_SIZE = 64
     BATCH_SIZE = 64

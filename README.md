@@ -48,9 +48,11 @@ which are descendants of this class and only have slight differences.
     test
         test
 
-## Thought ans Outline
+## Thought and Outline
 
-Since we were provided with the original masks for where the image was pixelated and where not, I figured why not exploit that directly. I restricted the pictures to 64x64, as mentioned in the description and concatenated the mask and the original along the channel dimension. I essentially passed it through a lot of CNN layers that got increasingly more kernels (here the heuristic is extracting more and more finer and more complex features) and I also increased the kernel size. Normally its not that common anymore to increase kernel size as one goes deeper, most models keep it at 3x3 or something and just increase the number of kernels, but in this case, it seems to work fine. The last layer’s output was also 64x64 but only one channel, but for the final prediction I just picked the original input pixels for every index where the Boolean mask (known_array) said so, and only integrated the part which was previously unknown.
+Since the test set used for evaluation provided us with the original masks for where the image was pixelated and where not, I figured why not exploit that directly.
+
+I restricted the pictures to 64x64, as mentioned in the description and concatenated the mask and the original along the channel dimension. I essentially passed it through a lot of CNN layers that got increasingly more kernels (here the heuristic is extracting more and more finer and more complex features) and I also increased the kernel size. Normally its not that common anymore to increase kernel size as one goes deeper, most models keep it at 3x3 or something and just increase the number of kernels, but in this case, it seems to work fine. The last layer’s output was also 64x64 but only one channel, but for the final prediction I just picked the original input pixels for every index where the Boolean mask (known_array) said so, and only integrated the part which was previously unknown.
 
 I also included some residual connections for stability reasons (only additive residuals and no concatenating ones). This way the model could solely focus on the inlining part and did not have to learn what pixels to leave as is. This approach did yield a 13.2 score or something with around 1.8mil parameters.
 

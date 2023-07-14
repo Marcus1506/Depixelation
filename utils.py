@@ -201,7 +201,7 @@ def plot_beatiful_samples(data: torch.utils.data.Dataset, model_path: str, indic
 
         columns = ['Truth', 'Pixelated', 'Prediction']
         for ax, column in zip(axs[0], columns):
-            ax.set_title(column)
+            ax.set_title(column, fontsize=14)
 
         for i in indices:
             truth = data.get_image(i)
@@ -215,6 +215,7 @@ def plot_beatiful_samples(data: torch.utils.data.Dataset, model_path: str, indic
             visualize_flat_u8int(pred, axs[count, 2])
             count += 1
     #fig.tight_layout()
+    fig.suptitle('Truth/Pixelated/Prediction samples of the final model', fontsize=18)
     plt.savefig('final_model_performance/beautiful_samples.jpg')
     plt.show()
         

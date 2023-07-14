@@ -197,7 +197,7 @@ def plot_beatiful_samples(data: torch.utils.data.Dataset, model_path: str, indic
     model.to('cpu')
     with torch.no_grad():
         count = 0
-        fig, axs = plt.subplots(len(indices), 3, figsize=(12, 20))
+        fig, axs = plt.subplots(len(indices), 3, figsize=(12, 16))
 
         columns = ['Truth', 'Pixelated', 'Prediction']
         for ax, column in zip(axs[0], columns):
@@ -214,7 +214,8 @@ def plot_beatiful_samples(data: torch.utils.data.Dataset, model_path: str, indic
             axs[count, 1].imshow(pix[0], cmap='gray', vmin=0, vmax=1)
             visualize_flat_u8int(pred, axs[count, 2])
             count += 1
-    fig.tight_layout()
+    #fig.tight_layout()
+    plt.savefig('final_model_performance/beautiful_samples.jpg')
     plt.show()
         
 

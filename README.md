@@ -2,7 +2,7 @@
 The goal of this project was to "depixelate" pixelated parts of images.
 
 Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
-dataset with certain known parts pixelated, the following work tailored towards this special case.
+dataset with certain known parts pixelated, the following work was tailored towards this special case.
 
 Later I also discuss possible ways of extending this work for the more general case of the model
 also having to infer what part of the image is pixelized.
@@ -48,8 +48,7 @@ which are descendants of this class and only have slight differences.
 
 #### BasicBlock
 
-    test
-        test
+Describe architecture in detail here...
 
 ## Thought and Outline
 

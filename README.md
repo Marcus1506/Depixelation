@@ -29,6 +29,13 @@ with a GAN in sequence. The adversery of the GAN should then identify blurred re
 should further refine the given areas.** This approach might ensure _accurate_ inpainting of the GAN, opposed to
 directly employing a GAN.
 
+So when combined with a model with the sole purpose of finding the pixelated area, which should be relatively easy to train,
+one could create a full **3 layered sequential model**. This **3-layer model should then be able to accuratly inpaint into
+pixelated areas solely based on an pixelated image.**
+
+Of course this could again be **generalized to multiple pixelated areas inside one image**. Such a transition would mostly entail
+increasing the complexity of the pixelated area finder and some finetuning to the two following models.
+
 ## Project Structure
 ### Handling Data
 The files "datasets.py" and "data_utils.py" feature a variety of Code needed for the RandomImagePixelation

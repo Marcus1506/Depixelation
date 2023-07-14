@@ -100,4 +100,4 @@ I did not use any prebuilt architectures or weights (but got inspired by the Res
 
 ## Number 1 on Image Depixelation Challenge Leaderboard at JKU Linz
 
-![leaderboard](final_model_performance/leaderboard.jpeg)
+![leaderboard](final_model_performance/leaderboard.JPG)

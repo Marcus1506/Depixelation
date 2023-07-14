@@ -21,6 +21,14 @@ is more a result of the loss being computed by the MSE to the original input tha
 rough pixelation inside an area with high detail means the model is safer to predict some sort of middleground,
 than actually trying to inpaint something that could be possible.
 
+This means the model tries to continue possible shapes inside the pixelated are based on pixelation, it is
+not a generative inpaint model.
+
+**However, this could easily be changed when further combining it
+with a GAN in sequence. The adversery of the GAN should then identify blurred regions, while the generating agent
+should further refine the given areas.** This approach might ensure _accurate_ inpainting of the GAN, opposed to
+directly employing a GAN.
+
 ## Project Structure
 ### Handling Data
 The files "datasets.py" and "data_utils.py" feature a variety of Code needed for the RandomImagePixelation

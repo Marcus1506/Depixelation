@@ -96,3 +96,7 @@ I also added the STL10 unlabeled images dataset to the one given to us, and I di
 Also, I did use a sigmoid activation in the end, but I think there are some valid arguments for ReLU or GELU or some selfmade one which caps values at 1 (did not test it though).
 
 I did not use any prebuilt architectures or weights (but got inspired by the ResNET architecture) and trained on a GTX 1080ti.
+
+## Number 1 on Image Depixelation Challenge Leaderboard at JKU Linz
+
+![leaderboard](final_model_performance/leaderboard.jpg)

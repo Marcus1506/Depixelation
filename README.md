@@ -13,7 +13,7 @@ mask which signalled where on the image the pixelation took place, was fed into 
 This means the model did NOT have to learn to infer where pixelation took place and could focus solely on
 the task of incribing appropiate pixels in the respective fields.
 
-![Model Predictions](final_model_performance/predictions_sample.jpeg)
+![Model Predictions](final_model_performance/beautiful_samples.jpg)
 
 ## Project Structure
 ### Handling Data

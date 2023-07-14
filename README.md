@@ -1,5 +1,6 @@
 # Depixelation
-The goal of this project was to "depixelate" pixelated parts of images.
+With this project I was able to successfully implement and train an image "depixelation" model, which claimed rank 1 
+out of 204 students at the JKU Linz Image Depixelation Challenge 2023 leaderboard.
 
 Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
 dataset with certain known parts pixelated, the following work was tailored towards this special case.
@@ -99,4 +100,4 @@ I did not use any prebuilt architectures or weights (but got inspired by the Res
 
 ## Number 1 on Image Depixelation Challenge Leaderboard at JKU Linz
 
-![leaderboard](final_model_performance/leaderboard.jpg)
+![leaderboard](final_model_performance/leaderboard.jpeg)

@@ -1,6 +1,6 @@
 # Depixelation
-With this project I was able to successfully implement and train an image "depixelation" model, which claimed rank 1 
-out of 204 students at the JKU Linz Image Depixelation Challenge 2023 leaderboard.
+With this project I was able to successfully implement and train an image "depixelation" model, which claimed **rank 1 
+out of 204 students at the JKU Linz Image Depixelation Challenge 2023 leaderboard** (see below for a screenshot).
 
 Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
 dataset with certain known parts pixelated, the following work was tailored towards this special case.

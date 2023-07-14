@@ -1,4 +1,4 @@
-# Depixilation
+# Depixelation
 The goal of this project was to "depixelate" pixelated parts of images.
 
 Since the test set, on which the evaluation of our models took place, was based on 64x64 grayscale image
@@ -17,7 +17,7 @@ dataset.
 
 ### General Utility
 Whereas "utils.py" provides general utility for the project (plotting, kernel size interpolation,
-serializing test predictions for submission ...).
+serializing test predictions for submission, etc.).
 
 ### Architectures
 Of course "architectures.py" features all the different architectures I tried during the many tests on

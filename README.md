@@ -36,6 +36,8 @@ pixelated areas solely based on an pixelated image.**
 Of course this could again be **generalized to multiple pixelated areas inside one image**. Such a transition would mostly entail
 increasing the complexity of the pixelated area finder and some finetuning to the two following models.
 
+The final model can be found under "models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt".
+
 ## Project Structure
 ### Handling Data
 The files "datasets.py" and "data_utils.py" feature a variety of Code needed for the RandomImagePixelation

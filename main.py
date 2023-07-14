@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import datasets
-from utils import training_loop, check_overfitting
+from utils import training_loop, check_overfitting, plot_beatiful_samples
 from data_utils import stack_with_padding
 
 if __name__ == '__main__':
@@ -33,6 +33,9 @@ if __name__ == '__main__':
     # If this model happens to perform better, then my 5th submission is the best one.
 
     # Careful to disable true_random for checking results with the following function
-    check_overfitting(datasets.RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16), true_random=False),
-                      "models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt")
+    #check_overfitting(datasets.RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16), true_random=False),
+    #                  "models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt")
+
+    plot_beatiful_samples(datasets.RandomImagePixelationDataset('data_sandbox', (4, 32), (4, 32), (4, 16), true_random=False),
+                          "models_serious/Deepixv1(5,5,6,6,7,7,8)(3,5).pt", [5, 2, 11, 12, 16])
     

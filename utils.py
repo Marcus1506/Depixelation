@@ -188,6 +188,36 @@ def check_overfitting(data: torch.utils.data.Dataset, model_path: str) -> None:
             visualize_flat_u8int(pred, axs[2])
             plt.show()
 
+def plot_beatiful_samples(data: torch.utils.data.Dataset, model_path: str, indices: list[str]) -> None:
+    assert len(indices) >= 2, "Please provide at least two indices!"
+
+    model = torch.load(model_path)
+    model.eval()
+    # just to be sure:
+    model.to('cpu')
+    with torch.no_grad():
+        count = 0
+        fig, axs = plt.subplots(len(indices), 3, figsize=(12, 20))
+
+        columns = ['Truth', 'Pixelated', 'Prediction']
+        for ax, column in zip(axs[0], columns):
+            ax.set_title(column)
+
+        for i in indices:
+            truth = data.get_image(i)
+            pix = data[i][0]
+            
+            pred = model(torch.from_numpy(np.concatenate((data[i][0], data[i][1]), axis=0)).unsqueeze(0).float()).numpy()*255
+            pred = pred.astype(np.uint8)
+
+            axs[count, 0].imshow(truth[0], cmap='gray', vmin=0, vmax=1)
+            axs[count, 1].imshow(pix[0], cmap='gray', vmin=0, vmax=1)
+            visualize_flat_u8int(pred, axs[count, 2])
+            count += 1
+    fig.tight_layout()
+    plt.show()
+        
+
 def plot_losses(training_losses: list[float], eval_losses: list[float], path: str) -> None:
     """
     Takes in training losses and evaluation losses and saves plots to path-directory.
